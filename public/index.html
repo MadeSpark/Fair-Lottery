@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>公平抽奖 - 公开可验证</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>公平抽奖</h1>
+    <p class="subtitle">承诺-揭示机制 + 公开哈希链，任何人都能在本地重新算出同样的结果</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="create">创建抽奖</button>
+    <button class="tab-btn" data-tab="join">参与抽奖</button>
+    <button class="tab-btn" data-tab="view">查看/开奖</button>
+    <button class="tab-btn" data-tab="list">全部活动</button>
+    <button class="tab-btn" data-tab="about">原理说明</button>
+  </nav>
+
+  <section id="tab-create" class="tab-panel active">
+    <h2>创建一个新的抽奖</h2>
+    <form id="form-create">
+      <label>活动标题
+        <input type="text" id="create-title" placeholder="例如：国庆福利抽奖" required maxlength="200" />
+      </label>
+      <label>中奖人数
+        <input type="number" id="create-winner-count" min="1" step="1" required placeholder="例如：3" />
+      </label>
+      <label>报名截止时间（创建后不可修改）
+        <input type="datetime-local" id="create-close-at" required />
+      </label>
+      <label class="checkbox-row">
+        <input type="checkbox" id="create-external" checked />
+        叠加 drand 公开随机数信标（推荐，需要服务器能访问外网）
+      </label>
+      <button type="submit">创建抽奖</button>
+    </form>
+    <div id="create-result" class="result-box hidden"></div>
+  </section>
+
+  <section id="tab-join" class="tab-panel">
+    <h2>参与抽奖</h2>
+    <form id="form-join">
+      <label>抽奖活动 ID
+        <input type="text" id="join-id" placeholder="创建者提供的活动 ID" required />
+      </label>
+      <label>你的参与编号（必须唯一，例如手机号后四位+姓名，或工号）
+        <input type="text" id="join-code" placeholder="请输入唯一编号" required maxlength="100" />
+      </label>
+      <button type="submit">提交参与</button>
+    </form>
+    <div id="join-result" class="result-box hidden"></div>
+  </section>
+
+  <section id="tab-view" class="tab-panel">
+    <h2>查看活动 / 开奖</h2>
+    <form id="form-view">
+      <label>抽奖活动 ID
+        <input type="text" id="view-id" placeholder="输入活动 ID 查询" required />
+      </label>
+      <button type="submit">查询</button>
+    </form>
+    <div id="view-result" class="result-box hidden"></div>
+  </section>
+
+  <section id="tab-list" class="tab-panel">
+    <h2>全部抽奖活动</h2>
+    <button id="btn-refresh-list">刷新列表</button>
+    <div id="list-result" class="result-box"></div>
+  </section>
+
+  <section id="tab-about" class="tab-panel">
+    <h2>公平性原理</h2>
+    <ol class="about-list">
+      <li><strong>创建时锁定密钥承诺</strong>：创建抽奖的瞬间，服务器生成一个随机密钥并立刻公开它的哈希值（commitHash）。密钥本身要到开奖那一刻才会公开。这保证组织者不能等看到所有参与者之后，才悄悄换一个"对自己有利"的密钥——因为哈希值早就钉死了，事后换密钥会让哈希对不上。</li>
+      <li><strong>哈希链记录参与过程</strong>：每个人提交编号后，服务器把编号、加入顺序、加入时间按结构化格式哈希，接到上一个哈希后面，像链条一样一环套一环。谁也不能在中途偷偷插入、删除或修改某个人的记录，否则后面所有的哈希值都会连锁性地对不上。</li>
+      <li><strong>报名截止时间不可修改</strong>：活动创建时就锁定截止时间，系统在此时间后拒绝新参与者。最终种子不包含“点击开奖”的时间，组织者无法通过反复挑选开奖时刻试算结果。</li>
+      <li><strong>开奖时揭示密钥</strong>：任何人都可以自己算一遍 SHA256(密钥)，看它是否等于创建时公开的 commitHash，从而确认这个密钥没有被事后调换。</li>
+      <li><strong>可选叠加公开随机数信标（drand）</strong>：drand 是多家机构联合运营的公开随机数网络，每 30 秒产生一个新随机数，产生之前谁都无法预测。创建时锁定报名截止时间之后的轮次，开奖时必须取到该值才能开奖，这个值不受本系统控制，任何人都能去 drand 官方接口自行核实。</li>
+      <li><strong>确定性洗牌</strong>：把上面所有公开信息混合成最终种子，用它驱动一个标准的 Fisher-Yates 洗牌算法，取前 N 位。这个过程是完全确定性的——同样的输入必然得到同样的输出。</li>
+      <li><strong>任何人都能本地复现</strong>：项目提供了一个零依赖的独立脚本 <code>scripts/verify.js</code>，只用 Node.js 内置的 crypto 模块重新实现了一遍算法。下载某场抽奖的公开数据后，运行 <code>node verify.js data.json</code>，如果算出的结果和官方公布的不一致，说明数据被篡改或系统有问题。</li>
+    </ol>
+    <p>推荐保持 drand 选项开启。关闭它后是离线兼容模式：仍然可复现、可验证篡改，但服务器生成的密钥对服务器运营者并不具有不可预测性。</p>
+    <p>你可以点击"查看/开奖"页面里的"下载验证数据"按钮获取某场抽奖的完整 JSON 数据，然后在自己电脑上运行验证脚本核实。</p>
+  </section>
+
+  <footer>
+    <p>所有数据通过 API 公开可查，欢迎自行编写程序对接验证。</p>
+  </footer>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

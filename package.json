@@ -1,0 +1,20 @@
+{
+  "name": "fair-lottery",
+  "version": "1.0.0",
+  "description": "公平透明、可本地复现验证的抽奖系统",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "verify": "node scripts/verify.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "cors": "2.8.6",
+    "express": "5.2.1",
+    "express-rate-limit": "8.7.0",
+    "helmet": "8.3.0"
+  }
+}
