@@ -40,8 +40,13 @@ function buildInitialSeed({ commitHash, createdAt, extraEntropy = '' }) {
 }
 
 function chainAppend(prevHash, entry) {
-  const { code, index, joinedAt } = entry;
-  return sha256Hex(JSON.stringify([prevHash, index, code, joinedAt]));
+  const { code, index, joinedAt, deviceHash } = entry;
+  // v1（历史活动，无设备标识）：[prevHash, index, code, joinedAt]
+  // v2（含设备标识）：[prevHash, index, code, joinedAt, deviceHash]
+  const payload = deviceHash
+    ? [prevHash, index, code, joinedAt, deviceHash]
+    : [prevHash, index, code, joinedAt];
+  return sha256Hex(JSON.stringify(payload));
 }
 
 function replayChain(initialSeed, entries) {
@@ -196,8 +201,13 @@ async function main() {
     allPassed = false;
   }
 
-  // 3. 重放参与者哈希链
-  const entries = (lottery.participants || []).map(({ code, index, joinedAt }) => ({ code, index, joinedAt }));
+  // 3. 重放参与者哈希链（含设备标识，设备标识也进链，删改任何一条都对不上）
+  const entries = (lottery.participants || []).map(({ code, index, joinedAt, deviceHash }) => ({
+    code,
+    index,
+    joinedAt,
+    deviceHash,
+  }));
   const recomputedChainHead = replayChain(recomputedInitialSeed, entries);
   if (recomputedChainHead === lottery.chainHead) {
     ok(`参与者哈希链校验通过（共 ${entries.length} 人），链头 = ${lottery.chainHead}`);
@@ -210,7 +220,12 @@ async function main() {
   let head = recomputedInitialSeed;
   let receiptMismatch = 0;
   for (const p of lottery.participants || []) {
-    head = chainAppend(head, { code: p.code, index: p.index, joinedAt: p.joinedAt });
+    head = chainAppend(head, {
+      code: p.code,
+      index: p.index,
+      joinedAt: p.joinedAt,
+      deviceHash: p.deviceHash,
+    });
     if (p.receipt && head !== p.receipt) {
       receiptMismatch++;
       console.error(`  ✗ 第 ${p.index} 位参与者（编号 ${p.code}）收据不匹配`);
@@ -221,6 +236,26 @@ async function main() {
   } else {
     fail(`${receiptMismatch} 份参与收据校验失败`);
     allPassed = false;
+  }
+
+  // 3.1 设备唯一性：同一活动中同一台设备不应出现两次
+  const deviceHashes = (lottery.participants || []).map((p) => p.deviceHash).filter(Boolean);
+  if (deviceHashes.length > 0) {
+    const uniqueDevices = new Set(deviceHashes);
+    if (uniqueDevices.size === deviceHashes.length) {
+      ok(`设备唯一性校验通过：${deviceHashes.length} 条参与记录来自 ${uniqueDevices.size} 台不同设备`);
+    } else {
+      const seen = new Set();
+      const duplicated = new Set();
+      for (const h of deviceHashes) {
+        if (seen.has(h)) duplicated.add(h);
+        seen.add(h);
+      }
+      fail(`发现有 ${duplicated.size} 台设备在同一活动中重复参与（共 ${deviceHashes.length - uniqueDevices.size} 条重复记录）`);
+      allPassed = false;
+    }
+  } else {
+    console.log('（该活动创建于设备校验上线之前，或未记录设备标识，跳过设备唯一性校验）');
   }
 
   if (lottery.status === 'drawn') {
@@ -261,6 +296,23 @@ async function main() {
     } else {
       fail('中奖名单不一致！');
       allPassed = false;
+    }
+
+    // 5.1 额外中奖名单：紧跟正式中奖者之后的若干位，同样必须完全可复现
+    const extraDrawCount = lottery.extraDrawCount || 0;
+    if (extraDrawCount > 0) {
+      const recomputedExtra = recomputedShuffled.slice(
+        recomputedWinners.length,
+        recomputedWinners.length + extraDrawCount
+      );
+      const extraMatch = JSON.stringify(recomputedExtra) === JSON.stringify(lottery.extraWinners || []);
+      if (extraMatch) {
+        ok(`额外中奖名单校验通过，共 ${recomputedExtra.length} / ${extraDrawCount} 人：`);
+        recomputedExtra.forEach((w, i) => console.log(`   额外 ${i + 1}. ${w}`));
+      } else {
+        fail('额外中奖名单不一致！');
+        allPassed = false;
+      }
     }
 
     if (lottery.externalRandomness) {

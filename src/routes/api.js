@@ -53,26 +53,30 @@ router.get(
 
 /**
  * POST /api/lotteries/:id/participants
- * body: { code }
- * 参与抽奖，提交唯一编号。
+ * body: { code, fingerprint }
+ * 参与抽奖，提交唯一编号和设备指纹。同一活动内一台设备只能参与一次。
  */
 router.post(
   '/lotteries/:id/participants',
   asyncHandler(async (req, res) => {
-    const { code } = req.body || {};
-    const entry = await lotteryService.joinLottery(req.params.id, code);
+    const { code, fingerprint } = req.body || {};
+    const entry = await lotteryService.joinLottery(req.params.id, code, fingerprint);
     res.status(201).json({ ok: true, data: entry });
   })
 );
 
 /**
  * POST /api/lotteries/:id/draw
+ * body: { extraDrawCount? }
  * 开奖：揭示密钥，计算并公开中奖名单。
+ * extraDrawCount 为额外抽取人数，只会在原有中奖名单之后追加，不会影响原名单。
+ * 已经开过奖的活动再次调用并传入更大的 extraDrawCount，即为追加抽取。
  */
 router.post(
   '/lotteries/:id/draw',
   asyncHandler(async (req, res) => {
-    const lottery = await lotteryService.drawLottery(req.params.id);
+    const extraDrawCount = req.body ? req.body.extraDrawCount : undefined;
+    const lottery = await lotteryService.drawLottery(req.params.id, extraDrawCount);
     res.json({ ok: true, data: lottery });
   })
 );

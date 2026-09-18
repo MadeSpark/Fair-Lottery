@@ -53,13 +53,40 @@ function buildInitialSeed({ commitHash, createdAt, extraEntropy = '' }) {
 
 /**
  * 哈希链：向种子链中加入一个参与者，返回新的链头哈希。
+ *
+ * 链格式有两个版本，靠记录里有没有 deviceHash 自动区分，因此历史数据
+ * 依然可以逐位复现：
+ *   v1: [prevHash, index, code, joinedAt]
+ *   v2: [prevHash, index, code, joinedAt, deviceHash]
+ *
+ * 设备标识（deviceHash）也进链，是为了防止组织者事后偷偷删掉某个设备
+ * 的重复提交记录——删掉任何一条，后面所有哈希都会连锁对不上。
+ *
  * @param {string} prevHash 上一个链头哈希
- * @param {object} entry { code, index, joinedAt }
+ * @param {object} entry { code, index, joinedAt, deviceHash? }
  * @returns {string} 新的链头哈希
  */
 function chainAppend(prevHash, entry) {
-  const { code, index, joinedAt } = entry;
-  return sha256Hex(JSON.stringify([prevHash, index, code, joinedAt]));
+  const { code, index, joinedAt, deviceHash } = entry;
+  const payload = deviceHash
+    ? [prevHash, index, code, joinedAt, deviceHash]
+    : [prevHash, index, code, joinedAt];
+  return sha256Hex(JSON.stringify(payload));
+}
+
+/**
+ * 由前端上报的设备指纹派生本活动内的设备标识。
+ *
+ * 关键点：用活动 ID 当盐，所以同一台设备在不同活动里算出的 deviceHash
+ * 完全不同，无法被跨活动关联追踪；但在同一活动内稳定不变，可以直接
+ * 用于"一个设备只能参加一次"的判定。公开这个值等于公开"这台设备参过
+ * 这场活动"，不会泄露指纹原文，也不会暴露它在别处参加过什么。
+ *
+ * @param {string} rawFingerprint 前端上报的指纹哈希（十六进制）
+ * @param {string} salt 活动 ID
+ */
+function deriveDeviceHash(rawFingerprint, salt) {
+  return sha256Hex(`DEVICE|${salt}|${rawFingerprint}`);
 }
 
 /**
@@ -157,12 +184,16 @@ function seededShuffle(array, seedHex) {
 
 /**
  * 完整开奖计算：给定参与者列表（按 index 升序）和最终种子，
- * 返回洗牌后的完整顺序（前 winnerCount 个即为中奖者）。
+ * 返回洗牌后的完整顺序。前 winnerCount 个是正式中奖者，
+ * 紧跟在后面的 extraWinnerCount 个是额外候补中奖者。
+ *
+ * 候补名单同样完全由公开数据决定，可以本地复现，不需要"再开一次奖"。
  */
-function drawWinners(participants, finalSeed, winnerCount) {
+function drawWinners(participants, finalSeed, winnerCount, extraWinnerCount = 0) {
   const shuffled = seededShuffle(participants, finalSeed);
   const winners = shuffled.slice(0, Math.min(winnerCount, shuffled.length));
-  return { shuffledOrder: shuffled, winners };
+  const extraWinners = shuffled.slice(winners.length, winners.length + Math.max(0, extraWinnerCount));
+  return { shuffledOrder: shuffled, winners, extraWinners };
 }
 
 module.exports = {
@@ -170,6 +201,7 @@ module.exports = {
   generateSecret,
   buildInitialSeed,
   chainAppend,
+  deriveDeviceHash,
   replayChain,
   buildFinalSeed,
   createByteStream,
