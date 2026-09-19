@@ -371,6 +371,15 @@ button[type="submit"]:hover,
   white-space: pre;
 }
 
+/* 覆盖通用 inline code 样式，避免代码示例出现浅色内层和额外留白。 */
+.api-code code {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
 .api-response-note {
   margin-top: 20px;
   padding-top: 16px;
