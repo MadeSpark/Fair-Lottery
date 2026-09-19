@@ -166,7 +166,7 @@ Content-Type: application/json
 ### 获取活动
 
 ```http
-GET /api/lotteries/:id
+POST /api/lotteries/:id
 ```
 
 开奖前公开活动元数据、`commitHash`、`initialSeed`、当前 `chainHead` 和参与者记录，但不公开 `secret`。
@@ -243,7 +243,7 @@ drand 还未产生时返回：
 ### 活动列表和健康检查
 
 ```http
-GET /api/lotteries
+POST /api/lotteries/list
 GET /health
 ```
 

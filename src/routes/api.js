@@ -28,11 +28,11 @@ router.post(
 );
 
 /**
- * GET /api/lotteries
+ * POST /api/lotteries/list
  * 列出所有抽奖活动摘要。
  */
-router.get(
-  '/lotteries',
+router.post(
+  '/lotteries/list',
   asyncHandler(async (req, res) => {
     const items = await lotteryService.listLotteries();
     res.json({ ok: true, data: items });
@@ -40,10 +40,10 @@ router.get(
 );
 
 /**
- * GET /api/lotteries/:id
+ * POST /api/lotteries/:id
  * 获取某个抽奖活动的完整公开数据（用于展示和本地验证）。
  */
-router.get(
+router.post(
   '/lotteries/:id',
   asyncHandler(async (req, res) => {
     const lottery = await lotteryService.getLottery(req.params.id);

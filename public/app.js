@@ -65,8 +65,8 @@
   // ---------- API 文档与示例代码生成 ----------
   const apiEndpoints = [
     { id: 'create', method: 'POST', path: '/api/lotteries', name: '创建抽奖', description: '创建活动并锁定中奖人数、报名截止时间和密钥承诺。' },
-    { id: 'list', method: 'GET', path: '/api/lotteries', name: '获取活动列表', description: '返回所有活动的公开摘要。' },
-    { id: 'detail', method: 'GET', path: '/api/lotteries/:id', name: '获取活动详情', description: '返回活动公开数据，可用于独立验证。' },
+    { id: 'list', method: 'POST', path: '/api/lotteries/list', name: '获取活动列表', description: '返回所有活动的公开摘要。' },
+    { id: 'detail', method: 'POST', path: '/api/lotteries/:id', name: '获取活动详情', description: '返回活动公开数据，可用于独立验证。' },
     { id: 'join', method: 'POST', path: '/api/lotteries/:id/participants', name: '参与抽奖', description: '提交唯一编号和浏览器设备指纹。' },
     { id: 'draw', method: 'POST', path: '/api/lotteries/:id/draw', name: '开奖 / 追加抽取', description: '报名截止后开奖；已开奖活动可传更大的额外人数追加名额。' },
   ];
@@ -566,7 +566,7 @@
   async function loadAndRenderLottery(id) {
     showBox(viewResult, '正在查询...');
     try {
-      const lottery = await api(`/lotteries/${encodeURIComponent(id)}`);
+      const lottery = await api(`/lotteries/${encodeURIComponent(id)}`, { method: 'POST' });
       renderLotteryDetail(lottery);
     } catch (err) {
       showBox(viewResult, errorHtml(err.message));
@@ -772,7 +772,7 @@
   async function loadList() {
     listResult.innerHTML = '加载中...';
     try {
-      const items = await api('/lotteries');
+      const items = await api('/lotteries/list', { method: 'POST' });
       if (items.length === 0) {
         listResult.innerHTML = '<p class="hint">还没有任何抽奖活动。</p>';
         return;
@@ -826,7 +826,7 @@
     joinBanner.classList.remove('banner-error');
     joinBanner.innerHTML = `已为你自动填入活动 ID：<code>${escapeHtml(id)}</code>。只需填写你的参与编号即可参加。${joinedLocally(id) ? '（注意：本机记录显示你已经参加过这场活动了）' : ''}`;
 
-    api(`/lotteries/${encodeURIComponent(id)}`)
+    api(`/lotteries/${encodeURIComponent(id)}`, { method: 'POST' })
       .then((lottery) => {
         const parts = [`活动名称：<strong>${escapeHtml(lottery.title)}</strong>`];
         if (lottery.status === 'drawn') parts.push('该活动已经开奖');

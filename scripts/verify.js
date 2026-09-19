@@ -3,7 +3,7 @@
  * 独立本地验证脚本（零依赖，只用 Node.js 内置的 crypto 模块）
  * ------------------------------------------------------------
  * 目的：任何人，包括不信任本系统开发者的第三方，都可以：
- *   1. 从 GET /api/lotteries/:id 接口下载某场抽奖的完整公开数据
+ *   1. 从 POST /api/lotteries/:id 接口下载某场抽奖的完整公开数据
  *      （或从网页上的"下载验证数据"按钮下载 JSON 文件）
  *   2. 在自己电脑上，不联网、不依赖本项目任何代码，只用这一个文件，
  *      重新计算一遍开奖过程
@@ -118,12 +118,11 @@ function seededShuffle(array, seedHex) {
   return arr;
 }
 
-function loadJson(source) {
+function loadJson(source, method = 'POST') {
   if (/^https?:\/\//i.test(source)) {
     return new Promise((resolve, reject) => {
       const lib = source.startsWith('https') ? https : http;
-      lib
-        .get(source, (res) => {
+      const req = lib.request(source, { method }, (res) => {
           if (res.statusCode < 200 || res.statusCode >= 300) {
             reject(new Error(`HTTP ${res.statusCode}`));
             return;
@@ -138,8 +137,9 @@ function loadJson(source) {
               reject(e);
             }
           });
-        })
-        .on('error', reject);
+        });
+      req.on('error', reject);
+      req.end();
     });
   }
   const raw = fs.readFileSync(source, 'utf8');
@@ -323,7 +323,7 @@ async function main() {
         console.log(`  随机值: ${lottery.externalRandomness.value}`);
         const drandUrl = 'https://api.drand.sh/public/' + lottery.externalRandomness.targetRound;
         try {
-          const publicRound = await loadJson(drandUrl);
+          const publicRound = await loadJson(drandUrl, 'GET');
           if (
             publicRound.round === lottery.externalRandomness.targetRound &&
             publicRound.randomness === lottery.externalRandomness.value
