@@ -62,6 +62,123 @@
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
+  // ---------- API 文档与示例代码生成 ----------
+  const apiEndpoints = [
+    { id: 'create', method: 'POST', path: '/api/lotteries', name: '创建抽奖', description: '创建活动并锁定中奖人数、报名截止时间和密钥承诺。' },
+    { id: 'list', method: 'GET', path: '/api/lotteries', name: '获取活动列表', description: '返回所有活动的公开摘要。' },
+    { id: 'detail', method: 'GET', path: '/api/lotteries/:id', name: '获取活动详情', description: '返回活动公开数据，可用于独立验证。' },
+    { id: 'join', method: 'POST', path: '/api/lotteries/:id/participants', name: '参与抽奖', description: '提交唯一编号和浏览器设备指纹。' },
+    { id: 'draw', method: 'POST', path: '/api/lotteries/:id/draw', name: '开奖 / 追加抽取', description: '报名截止后开奖；已开奖活动可传更大的额外人数追加名额。' },
+  ];
+  let activeApiEndpoint = 'create';
+  let activeApiLanguage = 'curl';
+
+  function apiBaseUrl() {
+    return window.location.origin;
+  }
+
+  function apiField(label, key, value, wide) {
+    return `<label class="api-field${wide ? ' api-field-wide' : ''}">${escapeHtml(label)}<input data-api-param="${key}" value="${escapeHtml(value)}" /></label>`;
+  }
+
+  function apiParameters(endpointId) {
+    const defaults = {
+      title: '春节福利抽奖',
+      winnerCount: '3',
+      closeAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      useExternalRandomness: 'true',
+      id: '活动ID',
+      code: 'USER-0001',
+      fingerprint: '浏览器生成的设备指纹',
+      extraDrawCount: '0',
+    };
+    if (endpointId === 'create') {
+      return [apiField('活动标题 title', 'title', defaults.title), apiField('中奖人数 winnerCount', 'winnerCount', defaults.winnerCount), apiField('截止时间 closeAt (ISO 8601)', 'closeAt', defaults.closeAt, true), apiField('启用 drand useExternalRandomness', 'useExternalRandomness', defaults.useExternalRandomness, true)].join('');
+    }
+    if (endpointId === 'detail' || endpointId === 'join' || endpointId === 'draw') {
+      const fields = [apiField('活动 ID', 'id', defaults.id, endpointId !== 'join')];
+      if (endpointId === 'join') fields.push(apiField('参与编号 code', 'code', defaults.code), apiField('设备指纹 fingerprint', 'fingerprint', defaults.fingerprint, true));
+      if (endpointId === 'draw') fields.push(apiField('额外抽取人数 extraDrawCount', 'extraDrawCount', defaults.extraDrawCount));
+      return fields.join('');
+    }
+    return '<p class="hint">此接口没有请求参数。</p>';
+  }
+
+  function readApiParameters() {
+    const values = {};
+    document.querySelectorAll('[data-api-param]').forEach((input) => {
+      values[input.dataset.apiParam] = input.value;
+    });
+    return values;
+  }
+
+  function apiRequestDefinition() {
+    const endpoint = apiEndpoints.find((item) => item.id === activeApiEndpoint);
+    const p = readApiParameters();
+    let path = endpoint.path.replace(':id', encodeURIComponent(p.id || '活动ID'));
+    let body = null;
+    if (endpoint.id === 'create') {
+      body = { title: p.title || '', winnerCount: Number(p.winnerCount || 0), closeAt: p.closeAt || '', useExternalRandomness: p.useExternalRandomness !== 'false' };
+    } else if (endpoint.id === 'join') {
+      body = { code: p.code || '', fingerprint: p.fingerprint || '' };
+    } else if (endpoint.id === 'draw') {
+      body = { extraDrawCount: Number(p.extraDrawCount || 0) };
+    }
+    return { endpoint, url: `${apiBaseUrl()}${path}`, body };
+  }
+
+  function shellQuote(value) {
+    return String(value).replace(/'/g, "'\\\"'\\\"'");
+  }
+
+  function generateApiCode(language) {
+    const { endpoint, url, body } = apiRequestDefinition();
+    if (language === 'curl') {
+      const base = `curl --request ${endpoint.method} '${shellQuote(url)}'`;
+      if (!body) return base;
+      return `${base} \\\n+  --header 'Content-Type: application/json' \\\n+  --data '${shellQuote(JSON.stringify(body))}'`;
+    }
+    if (language === 'php') {
+      const options = body
+        ? `CURLOPT_HTTPHEADER => ['Content-Type: application/json'],\n  CURLOPT_POSTFIELDS => ${JSON.stringify(JSON.stringify(body))},\n  CURLOPT_CUSTOMREQUEST => '${endpoint.method}',`
+        : `CURLOPT_CUSTOMREQUEST => '${endpoint.method}',`;
+      return `<?php\n$url = '${url.replace(/'/g, "\\'")}';\n$ch = curl_init($url);\ncurl_setopt_array($ch, [\n  CURLOPT_RETURNTRANSFER => true,\n  ${options}\n]);\n$response = curl_exec($ch);\n$statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);\nif ($response === false) {\n  throw new RuntimeException(curl_error($ch));\n}\ncurl_close($ch);\n$data = json_decode($response, true);\nprint_r($data);\n`;
+    }
+    const payload = body ? `\nimport json\npayload = json.loads(${JSON.stringify(JSON.stringify(body))})\n` : '';
+    const requestArgs = body ? ', json=payload' : '';
+    return `import requests\n\nurl = "${url}"${payload}\nresponse = requests.${endpoint.method.toLowerCase()}(url${requestArgs}, timeout=15)\nresponse.raise_for_status()\nresult = response.json()\nprint(result)\n`;
+  }
+
+  function renderApiDocs() {
+    const endpoint = apiEndpoints.find((item) => item.id === activeApiEndpoint);
+    const catalog = document.getElementById('api-catalog');
+    const meta = document.getElementById('api-meta');
+    const parameters = document.getElementById('api-parameters');
+    if (!catalog || !meta || !parameters) return;
+    catalog.innerHTML = apiEndpoints
+      .map((item) => `<button class="api-endpoint-btn${item.id === activeApiEndpoint ? ' active' : ''}" data-api-endpoint="${item.id}"><span class="api-method">${item.method}</span>${escapeHtml(item.path)}<span class="api-endpoint-name">${escapeHtml(item.name)}</span></button>`)
+      .join('');
+    meta.innerHTML = `<h3>${escapeHtml(endpoint.name)}</h3><p>${escapeHtml(endpoint.description)}</p><span class="api-path"><strong>${endpoint.method}</strong> ${escapeHtml(endpoint.path)}</span>`;
+    parameters.innerHTML = apiParameters(endpoint.id);
+    renderApiCode();
+
+    catalog.querySelectorAll('[data-api-endpoint]').forEach((button) => {
+      button.addEventListener('click', () => {
+        activeApiEndpoint = button.dataset.apiEndpoint;
+        renderApiDocs();
+      });
+    });
+    parameters.querySelectorAll('[data-api-param]').forEach((input) => input.addEventListener('input', renderApiCode));
+  }
+
+  function renderApiCode() {
+    const output = document.getElementById('api-code-output');
+    const label = document.getElementById('api-code-label');
+    if (!output || !label) return;
+    output.textContent = generateApiCode(activeApiLanguage).replace(/\n\+/g, '\n');
+    label.textContent = `${activeApiLanguage === 'curl' ? '终端命令' : activeApiLanguage === 'php' ? 'PHP cURL' : 'Python requests'} 示例`;
+  }
+
   function shortHash(hash) {
     if (!hash) return '';
     return hash.length > 16 ? `${hash.slice(0, 16)}...` : hash;
@@ -737,6 +854,29 @@
     document.getElementById('join-id').value = id;
     loadJoinBanner(id);
   })();
+
+  // ---------- API 文档交互 ----------
+  document.querySelectorAll('[data-api-language]').forEach((button) => {
+    button.addEventListener('click', () => {
+      activeApiLanguage = button.dataset.apiLanguage;
+      document.querySelectorAll('[data-api-language]').forEach((item) => {
+        item.classList.toggle('active', item === button);
+      });
+      renderApiCode();
+    });
+  });
+
+  document.getElementById('btn-copy-api-code').addEventListener('click', async (event) => {
+    const code = document.getElementById('api-code-output').textContent;
+    const done = await copyText(code);
+    const button = event.currentTarget;
+    button.textContent = done ? '已复制 ✓' : '复制失败';
+    setTimeout(() => {
+      button.textContent = '复制代码';
+    }, 1600);
+  });
+
+  renderApiDocs();
 
   // 首次加载列表
   loadList();

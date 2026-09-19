@@ -19,6 +19,7 @@
     <button class="tab-btn" data-tab="join">参与抽奖</button>
     <button class="tab-btn" data-tab="view">查看/开奖</button>
     <button class="tab-btn" data-tab="list">全部活动</button>
+    <button class="tab-btn" data-tab="api">API 文档</button>
     <button class="tab-btn" data-tab="about">原理说明</button>
   </nav>
 
@@ -79,6 +80,35 @@
     <h2>全部抽奖活动</h2>
     <button id="btn-refresh-list">刷新列表</button>
     <div id="list-result" class="result-box"></div>
+  </section>
+
+  <section id="tab-api" class="tab-panel">
+    <h2>API 文档</h2>
+    <p class="hint">所有接口使用 JSON。下方示例会使用当前网站域名；可修改测试参数后复制到其他程序中调用。</p>
+
+    <div class="api-layout">
+      <div class="api-catalog" id="api-catalog"></div>
+      <div class="api-workbench">
+        <div id="api-meta" class="api-meta"></div>
+        <div id="api-parameters" class="api-parameters"></div>
+        <div class="api-language-tabs" role="tablist">
+          <button class="api-language-btn active" data-api-language="curl">cURL</button>
+          <button class="api-language-btn" data-api-language="php">PHP</button>
+          <button class="api-language-btn" data-api-language="python">Python</button>
+        </div>
+        <div class="api-code-toolbar">
+          <span id="api-code-label" class="muted"></span>
+          <button class="btn btn-secondary btn-sm" id="btn-copy-api-code">复制代码</button>
+        </div>
+        <pre class="api-code"><code id="api-code-output"></code></pre>
+      </div>
+    </div>
+
+    <div class="api-response-note">
+      <strong>响应格式</strong>
+      <p><code>{ "ok": true, "data": { ... } }</code></p>
+      <p>失败时为 <code>{ "ok": false, "error": "错误说明", "code": "ERROR_CODE" }</code>。</p>
+    </div>
   </section>
 
   <section id="tab-about" class="tab-panel">

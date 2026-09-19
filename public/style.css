@@ -223,6 +223,165 @@ button[type="submit"]:hover,
   border-color: var(--primary);
 }
 
+/* ---------- API 文档 ---------- */
+.api-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.72fr) minmax(0, 2fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.api-catalog {
+  display: grid;
+  gap: 8px;
+}
+
+.api-endpoint-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.api-endpoint-btn:hover,
+.api-endpoint-btn.active {
+  border-color: var(--primary);
+  background: #f2f6ff;
+}
+
+.api-method {
+  display: inline-block;
+  min-width: 42px;
+  margin-right: 7px;
+  font-family: "Consolas", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.api-endpoint-name {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.api-workbench {
+  min-width: 0;
+}
+
+.api-meta {
+  margin-bottom: 12px;
+}
+
+.api-meta h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.api-meta p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.api-path {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #eef1f8;
+  font-family: "Consolas", monospace;
+  font-size: 13px;
+}
+
+.api-parameters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.api-field {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.api-field.api-field-wide {
+  grid-column: 1 / -1;
+}
+
+.api-field input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: "Consolas", monospace;
+  font-size: 13px;
+}
+
+.api-language-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.api-language-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 11px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.api-language-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.api-code-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.api-code {
+  overflow-x: auto;
+  margin: 8px 0 0;
+  padding: 14px;
+  border-radius: 6px;
+  background: #182236;
+  color: #e8eefc;
+  font-family: "Consolas", monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.api-response-note {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.api-response-note p {
+  margin: 5px 0;
+}
+
 .about-list li {
   margin-bottom: 14px;
 }
@@ -239,6 +398,20 @@ footer {
   color: var(--muted);
   font-size: 13px;
   margin-top: 32px;
+}
+
+@media (max-width: 640px) {
+  .api-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .api-parameters {
+    grid-template-columns: 1fr;
+  }
+
+  .api-field.api-field-wide {
+    grid-column: auto;
+  }
 }
 
 /* ---------- 说明文字 ---------- */
